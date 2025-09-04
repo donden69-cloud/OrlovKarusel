@@ -1,0 +1,30 @@
+:root { --bg:#071124; --muted:#94a3b8; --accent:#06b6d4; }
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;background:linear-gradient(180deg,#07102a,#031022);color:#e6eef7}
+.container{max-width:1100px;margin:28px auto;padding:20px}
+header h1{margin:0 0 6px 0;font-size:22px}
+header p{margin:0 0 18px 0;color:var(--muted)}
+
+.grid{display:grid;grid-template-columns:1fr 1.4fr;gap:18px}
+.editor{background:#071124;padding:14px;border-radius:10px}
+.editor label{display:block;margin-bottom:6px;color:var(--muted)}
+.editor textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#031022;color:#e6eef7}
+
+.row{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.buttons button{padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:#042a2f;cursor:pointer}
+
+.previews .wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card{background:#071124;padding:12px;border-radius:10px;color:#e6eef7}
+.card-header{font-weight:600;margin-bottom:8px}
+.card-controls{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.card-controls input[type=file]{font-size:12px;color:var(--muted)}
+.card-controls button{padding:6px 8px;border-radius:6px;border:none;background:#0f1720;color:#e6eef7;cursor:pointer}
+
+.preview{background:#020617;padding:10px;border-radius:8px;display:flex;justify-content:center;align-items:center}
+.slide{position:relative;width:270px;height:337.5px;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#111}
+.slide .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.slide .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.45);z-index:1}
+.slide .text{position:relative;z-index:2;padding:18px;color:#fff;white-space:pre-wrap;text-align:center;font-size:16px;line-height:1.25}
+
+footer{margin-top:16px;color:var(--muted);font-size:13px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
