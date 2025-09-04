@@ -1,0 +1,106 @@
+import React, { useMemo, useRef, useState } from "react";
+import { toPng } from "html-to-image";
+
+function splitToSlides(text) {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split(/\n\s*\n/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+export default function App() {
+  const [raw, setRaw] = useState(
+    "Заголовок\n\nВторой слайд — тезисы\n— Пункт 1\n— Пункт 2\n\nТретий слайд: призыв к действию"
+  );
+  const slides = useMemo(() => splitToSlides(raw), [raw]);
+  const [images, setImages] = useState({});
+  const refs = useRef([]);
+
+  const handleImage = (idx, file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImages((p) => ({ ...p, [idx]: e.target.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = (idx) => {
+    setImages((p) => {
+      const n = { ...p };
+      delete n[idx];
+      return n;
+    });
+  };
+
+  const exportSlide = async (idx) => {
+    const node = refs.current[idx];
+    if (!node) return alert("Ошибка: нет превью для экспорта.");
+    try {
+      const dataUrl = await toPng(node, { width: 1080, height: 1350, pixelRatio: 2 });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `slide-${idx + 1}.png`;
+      a.click();
+    } catch (err) {
+      console.error(err);
+      alert("Ошибка при экспорте. Откройте консоль для подробностей.");
+    }
+  };
+
+  const exportAll = async () => {
+    for (let i = 0; i < slides.length; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await exportSlide(i);
+    }
+  };
+
+  return (
+    <div className="container">
+      <header>
+        <h1>Insta Carousel Creator</h1>
+        <p>Вставьте текст. Один абзац (пустая строка между абзацами) = отдельный слайд.</p>
+      </header>
+
+      <main className="grid">
+        <section className="editor">
+          <label>Текст (один абзац = один слайд)</label>
+          <textarea value={raw} onChange={(e) => setRaw(e.target.value)} rows={12} />
+          <div className="row">
+            <div>Слайдов: {slides.length}</div>
+            <div className="buttons">
+              <button onClick={exportAll}>Скачать все (PNG)</button>
+            </div>
+          </div>
+        </section>
+
+        <section className="previews">
+          {slides.length === 0 && <div className="card">Добавьте текст слева</div>}
+          <div className="wrap">
+            {slides.map((t, idx) => (
+              <div className="card" key={idx}>
+                <div className="card-header">Слайд {idx + 1}</div>
+                <div className="card-controls">
+                  <input type="file" accept="image/*" onChange={(e) => handleImage(idx, e.target.files?.[0])} />
+                  {images[idx] && <button onClick={() => clearImage(idx)}>Убрать фото</button>}
+                  <button onClick={() => exportSlide(idx)}>PNG</button>
+                </div>
+
+                <div className="preview">
+                  <div className="slide" ref={(el) => (refs.current[idx] = el)}>
+                    {images[idx] && <img className="bg" src={images[idx]} alt="bg" />}
+                    <div className="overlay" />
+                    <div className="text">{t}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <footer>Экспорт 1080×1350 PNG. Если блокирует — скачивай по одному.</footer>
+    </div>
+  );
+}
