@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 
-/** Разбиваем текст на слайды по пустой строке */
+// 1 абзац = 1 слайд (абзацы разделяем пустой строкой)
 function splitToSlides(text) {
   return text
     .replace(/\r\n/g, "\n")
@@ -11,30 +11,111 @@ function splitToSlides(text) {
 }
 
 export default function App() {
+  // пример: здесь ровно 3 абзаца -> 3 слайда.
+  // добавь больше абзацев — будет больше слайдов; лимита нет.
   const [raw, setRaw] = useState(
     "Заголовок\n\nВторой слайд — тезисы\n— Пункт 1\n— Пункт 2\n\nТретий слайд: призыв к действию"
   );
   const slides = useMemo(() => splitToSlides(raw), [raw]);
 
-  // Стили/настройки
+  // Текст / компоновка
   const [fontSize, setFontSize] = useState(64);
   const [lineHeight, setLineHeight] = useState(1.2);
   const [padding, setPadding] = useState(72);
-  const [overlayOpacity, setOverlayOpacity] = useState(0.45);
-  const [textAlign, setTextAlign] = useState("center");
 
-  // Цвета
+  const [textAlign, setTextAlign] = useState("center");      // left / center / right
+  const [vAlign, setVAlign] = useState("center");            // top / center / bottom
+
   const [textColor, setTextColor] = useState("#ffffff");
   const [bgColor, setBgColor] = useState("#111111");
   const [overlayColor, setOverlayColor] = useState("#000000");
+  const [overlayOpacity, setOverlayOpacity] = useState(0.45);
 
-  // Картинки по слайдам
-  const [images, setImages] = useState({}); // {index: dataURL}
-  const refs = useRef([]); // ссылки на узлы слайдов для экспорта
+  // Фото
+  const [fitMode, setFitMode] = useState("cover"); // cover (без полос) / contain (вся картинка целиком)
+  const [images, setImages] = useState({});
+  const refs = useRef([]);
 
   const handleImage = (idx, file) => {
     if (!file) return;
     const reader = new FileReader();
+    reader.onload = (e) =>
+      setImages((p) => ({ ...p, [idx]: e.target.result }));
+    reader.readAsDataURL(file);
+  };
+  const clearImage = (idx) =>
+    setImages((p) => {
+      const n = { ...p };
+      delete n[idx];
+      return n;
+    });
+
+  const exportSlide = async (idx) => {
+    const node = refs.current[idx];
+    if (!node) return alert("Нет превью для экспорта");
+    try {
+      const dataUrl = await toPng(node, {
+        width: 1080,
+        height: 1350,
+        pixelRatio: 2,
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `slide-${idx + 1}.png`;
+      a.click();
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при экспорте PNG");
+    }
+  };
+  const exportAll = async () => {
+    for (let i = 0; i < slides.length; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await exportSlide(i);
+    }
+  };
+
+  // утилиты для флексов
+  const hJustify =
+    textAlign === "left"
+      ? "flex-start"
+      : textAlign === "right"
+      ? "flex-end"
+      : "center";
+  const vAlignItems =
+    vAlign === "top"
+      ? "flex-start"
+      : vAlign === "bottom"
+      ? "flex-end"
+      : "center";
+
+  return (
+    <div className="container">
+      <header>
+        <h1>Insta Carousel Creator</h1>
+        <p>
+          Один абзац = один слайд. Поставь пустую строку между абзацами — и
+          получишь новый слайд (лимита нет).
+        </p>
+      </header>
+
+      <main className="grid">
+        {/* Панель настроек */}
+        <section className="editor">
+          <label>Текст → Слайды</label>
+          <textarea
+            rows={10}
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            placeholder="Один абзац = один слайд"
+          />
+
+          <div className="controls">
+            <div className="control">
+              <span>Размер шрифта: {fontSize}px</span>
+              <input
+                type="range"
+                min="24"    const reader = new FileReader();
     reader.onload = (e) => {
       setImages((p) => ({ ...p, [idx]: e.target.result }));
     };
