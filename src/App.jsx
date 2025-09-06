@@ -1,15 +1,22 @@
 import React, { useRef, useState } from "react";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 import "./styles.css";
 
 export default function App() {
-  const [slides, setSlides] = useState([]); // [{img, caption}]
+  // [{img: dataURL, caption: string}]
+  const [slides, setSlides] = useState([]);
   const [idx, setIdx] = useState(0);
 
-  const [fontSize, setFontSize] = useState(36);
-  const [yPos, setYPos] = useState(90); // 0–100, где 100 — у самого низа
+  // настройки текста
+  const [fontSize, setFontSize] = useState(40);
+  const [yPos, setYPos] = useState(92); // 0..100 (в % от высоты), по умолчанию низ
+  const [fontFamily, setFontFamily] = useState("Inter");
+  const [fontColor, setFontColor] = useState("#ffffff");
+
   const fileRef = useRef(null);
 
-  // загрузка 1 или нескольких картинок
+  // загрузка картинок
   const onUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -29,7 +36,7 @@ export default function App() {
         ...dataURLs.map((url) => ({ img: url, caption: "Текст..." })),
       ]);
       if (slides.length === 0) setIdx(0);
-      e.target.value = ""; // очистить инпут, чтобы можно было выбрать те же файлы
+      e.target.value = "";
     });
   };
 
@@ -54,58 +61,77 @@ export default function App() {
   const prev = () => setIdx((p) => (p <= 0 ? slides.length - 1 : p - 1));
   const next = () => setIdx((p) => (p >= slides.length - 1 ? 0 : p + 1));
 
-  const exportPNG = async () => {
-    // простой экспорт через canvas без сторонних библиотек
-    const s = slides[idx];
-    if (!s) return;
+  // Экспорт одного слайда (через Canvas, 1080x1350, без кропа)
+  const renderSlideToCanvas = (slide) =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = slide.img;
 
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = s.img;
-    img.onload = () => {
-      const W = 1080, H = 1350;
-      const canvas = document.createElement("canvas");
-      canvas.width = W; canvas.height = H;
-      const ctx = canvas.getContext("2d");
+      img.onload = () => {
+        const W = 1080,
+          H = 1350;
+        const canvas = document.createElement("canvas");
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext("2d");
 
-      // фон
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, W, H);
+        // фон
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, W, H);
 
-      // вписываем изображение без обрезки (contain)
-      const r = Math.min(W / img.width, H / img.height);
-      const w = img.width * r;
-      const h = img.height * r;
-      const x = (W - w) / 2;
-      const y = (H - h) / 2;
-      ctx.drawImage(img, x, y, w, h);
+        // вписываем изображение целиком (contain)
+        const r = Math.min(W / img.width, H / img.height);
+        const w = img.width * r;
+        const h = img.height * r;
+        const x = (W - w) / 2;
+        const y = (H - h) / 2;
+        ctx.drawImage(img, x, y, w, h);
 
-      // текст
-      ctx.font = `700 ${fontSize}px Arial`;
-      ctx.fillStyle = "#fff";
-      ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0,0,0,.8)";
-      ctx.shadowBlur = 8;
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = "rgba(0,0,0,.6)";
+        // текст
+        ctx.font = `700 ${fontSize}px "${fontFamily}", Arial, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillStyle = fontColor;
+        ctx.shadowColor = "rgba(0,0,0,.85)";
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = "rgba(0,0,0,.55)";
 
-      const lines = s.caption.split("\n");
-      const baseY = (yPos / 100) * H; // позиция относительно высоты
-      const lineH = fontSize * 1.25;
-      const startY = baseY - lineH * (lines.length - 1);
+        const lines = (slide.caption || "").split("\n");
+        const baseY = (yPos / 100) * H;
+        const lineH = fontSize * 1.25;
+        const startY = baseY - lineH * (lines.length - 1);
 
-      lines.forEach((line, i) => {
-        const yy = startY + i * lineH;
-        ctx.strokeText(line, W / 2, yy);
-        ctx.fillText(line, W / 2, yy);
-      });
+        lines.forEach((line, i) => {
+          const yy = startY + i * lineH;
+          ctx.strokeText(line, W / 2, yy);
+          ctx.fillText(line, W / 2, yy);
+        });
 
-      const url = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `slide-${idx + 1}.png`;
-      a.click();
-    };
+        canvas.toBlob((blob) => resolve(blob), "image/png");
+      };
+    });
+
+  const exportCurrentPNG = async () => {
+    const slide = slides[idx];
+    if (!slide) return;
+    const blob = await renderSlideToCanvas(slide);
+    saveAs(blob, `slide-${idx + 1}.png`);
+  };
+
+  // Экспорт ВСЕХ слайдов разом в ZIP
+  const exportAll = async () => {
+    if (!slides.length) return;
+    const zip = new JSZip();
+
+    for (let i = 0; i < slides.length; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      const blob = await renderSlideToCanvas(slides[i]);
+      zip.file(`slide-${i + 1}.png`, blob);
+    }
+
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, "slides.zip");
   };
 
   return (
@@ -126,8 +152,11 @@ export default function App() {
 
         <div className="spacer" />
 
-        <button className="btn" disabled={!slides.length} onClick={exportPNG}>
-          Экспорт PNG
+        <button className="btn" disabled={!slides.length} onClick={exportCurrentPNG}>
+          Экспорт PNG (текущий)
+        </button>
+        <button className="btn" disabled={!slides.length} onClick={exportAll}>
+          Скачать все (ZIP)
         </button>
         <button className="btn danger" disabled={!slides.length} onClick={removeCurrent}>
           Удалить слайд
@@ -142,14 +171,39 @@ export default function App() {
           value={slides[idx]?.caption || ""}
           onChange={(e) => setCaption(e.target.value)}
         />
-        <label>Размер шрифта: {fontSize}px</label>
+
+        <label>Шрифт</label>
+        <select
+          className="select"
+          value={fontFamily}
+          onChange={(e) => setFontFamily(e.target.value)}
+        >
+          <option value="Inter">Inter</option>
+          <option value="Montserrat">Montserrat</option>
+          <option value="Roboto">Roboto</option>
+          <option value="PT Sans">PT Sans</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Arial">Arial</option>
+        </select>
+
+        <label>Цвет</label>
+        <input
+          className="color"
+          type="color"
+          value={fontColor}
+          onChange={(e) => setFontColor(e.target.value)}
+        />
+
+        <label>Размер: {fontSize}px</label>
         <input
           type="range"
           min="20"
-          max="96"
+          max="100"
           value={fontSize}
           onChange={(e) => setFontSize(+e.target.value)}
         />
+
         <label>Положение по вертикали: {yPos}%</label>
         <input
           type="range"
@@ -161,7 +215,9 @@ export default function App() {
       </div>
 
       <div className="viewer">
-        <button className="nav" onClick={prev} disabled={slides.length <= 1}>⟵</button>
+        <button className="nav" onClick={prev} disabled={slides.length <= 1}>
+          ⟵
+        </button>
 
         <div className="slide-box">
           {slides[idx] ? (
@@ -169,7 +225,12 @@ export default function App() {
               <img className="slide-img" src={slides[idx].img} alt="" />
               <div
                 className="caption"
-                style={{ fontSize: `${fontSize}px`, top: `${yPos}%` }}
+                style={{
+                  fontSize: `${fontSize}px`,
+                  top: `${yPos}%`,
+                  color: fontColor,
+                  fontFamily: `"${fontFamily}", Arial, sans-serif`
+                }}
               >
                 {slides[idx].caption}
               </div>
@@ -179,7 +240,9 @@ export default function App() {
           )}
         </div>
 
-        <button className="nav" onClick={next} disabled={slides.length <= 1}>⟶</button>
+        <button className="nav" onClick={next} disabled={slides.length <= 1}>
+          ⟶
+        </button>
       </div>
 
       {Boolean(slides.length) && (
