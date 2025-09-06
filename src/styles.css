@@ -1,46 +1,71 @@
 body {
-  font-family: sans-serif;
   margin: 0;
-  background: #f5f5f5;
-  color: #333;
-}
-
-.container {
-  max-width: 1200px;
-  margin: auto;
-  padding: 20px;
-}
-
-header, footer {
-  margin-bottom: 20px;
-}
-
-.grid {
+  font-family: Arial, sans-serif;
+  background-color: #111;
+  color: white;
   display: flex;
-  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
-.editor {
-  flex: 1;
+.carousel-container {
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
 }
 
-.previews {
-  flex: 2;
+.controls {
+  margin: 15px 0;
+}
+
+.carousel {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
-.card {
-  border: 1px solid #ddd;
-  padding: 10px;
-  background: white;
+.carousel button {
+  background: rgba(255, 255, 255, 0.7);
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
 }
 
-.preview {
-  margin-top: 10px;
+.carousel button:hover {
+  background: rgba(255, 255, 255, 1);
 }
 
-.slide .bg { position: absolute; inset: 0; z-index: 0; }
-.slide .overlay { position: absolute; inset: 0; z-index: 1; }
-.textWrap { z-index: 2; }
+.slide {
+  position: relative;
+  width: 400px;
+  height: 500px;
+  margin: 0 10px;
+  background: black;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* фото полностью без обрезки */
+  background: black;
+}
+
+.slide p {
+  position: absolute;
+  bottom: 15px; /* текст внизу */
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  margin: 0;
+}
